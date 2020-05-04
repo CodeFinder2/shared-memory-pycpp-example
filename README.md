@@ -1,9 +1,9 @@
 # Overview
 This example demonstrates how to use shared memory (via [`QSharedMemory`](https://doc.qt.io/qt-5/qsharedmemory.html)) and a system-wide semaphore (via [`QSystemSemaphore`](https://doc.qt.io/qt-5/qsystemsemaphore.html)) between a C++ application (the consumer) and a Python application (the producer) in Qt5.
 
-The producer "produces" images by loading them from a file from disk (when the user triggers it) and the consumer "consumes" theses images by displaying them in the UI. The C++ application can either be configured in a "threaded waiting" fashion (the default) so that it spawns a separate thread which waits for the system semaphore to be signaled to not block the UI thread. Alternatively (and just for demonstration purposes), the app might also block in its main thread (effectively blocking the UI) by `ENABLE_THREADED_WAITING` is *not* defined. In the latter case, the user needs to click the button at the bottom of the UI to activate the waiting (blocking).
+The producer "produces" images by loading them from a file from disk (when the user triggers it) and the consumer "consumes" these images by displaying them in the UI. The C++ application can either be configured in a "threaded waiting" fashion (the default) so that it spawns a separate thread which waits for the system semaphore to be signaled to not block the UI thread. Alternatively (and just for demonstration purposes), the app might also block in its main thread (effectively blocking the UI) by `ENABLE_THREADED_WAITING` is *not* defined. In the latter case, the user needs to click the button at the bottom of the UI to activate the waiting (blocking).
 
-Both apps print some logging information to the standard output.
+Both apps print some logging information to the standard output. The producer/consumer behavior can be inverted (Python: consumer, C++: producer) by modifying the code slightly.
 
 # Installation
 Install Qt5, PyQt5, CMake and a compiler (gcc or clang) on your system. Either compile the sources manually or use the provided `build.sh` script to compile and run it. The compiled C++ application will be placed in `build/shared_memory_cpp`. The Python application is `shared_memory.py`.
