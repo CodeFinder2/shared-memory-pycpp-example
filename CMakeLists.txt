@@ -12,20 +12,21 @@ set(CMAKE_AUTOUIC ON)
 if(CMAKE_VERSION VERSION_LESS "3.7.0")
   set(CMAKE_INCLUDE_CURRENT_DIR ON)
 endif()
+include_directories(src)
 
 find_package(Qt5 COMPONENTS Widgets Concurrent REQUIRED)
 
 add_executable(${CMAKE_PROJECT_NAME}
-  src/dialog.ui
-  src/dialog.h
-  src/dialog.cpp
-  src/main.cpp
-  src/abstract_ipc.h
-  src/abstract_ipc.cpp
-  src/consumer_ipc.h
-  src/consumer_ipc.cpp
-  src/producer_ipc.h
-  src/producer_ipc.cpp
+  src/ui/dialog.ui
+  src/ui/dialog.h
+  src/ui/dialog.cpp
+  src/ui/main.cpp
+  src/prodcon_ipc/abstract_ipc.h
+  src/prodcon_ipc/abstract_ipc.cpp
+  src/prodcon_ipc/consumer_ipc.h
+  src/prodcon_ipc/consumer_ipc.cpp
+  src/prodcon_ipc/producer_ipc.h
+  src/prodcon_ipc/producer_ipc.cpp
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets Qt5::Concurrent)

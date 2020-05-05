@@ -65,9 +65,9 @@
 
 #include "ui_dialog.h"
 #if CONSUMER == 1
-#include "consumer_ipc.h"
+#include <prodcon_ipc/consumer_ipc.h>
 #elif CONSUMER == 0
-#include "producer_ipc.h"
+#include <prodcon_ipc/producer_ipc.h>
 #else
   #error Invalid value for <CONSUMER> define, should be 0 (= producer) or 1 (= consumer).
 #endif
