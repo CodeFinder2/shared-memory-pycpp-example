@@ -5,10 +5,12 @@ __pycache__/
 
 # C extensions
 *.so
+CMakeLists.txt.user
 
 # Distribution / packaging
 .Python
 build/
+.idea/
 develop-eggs/
 dist/
 downloads/
