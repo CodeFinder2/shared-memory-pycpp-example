@@ -54,32 +54,22 @@
 
 // Abstract: this C++ application contains the consumer logic, i.e., it waits until the Python app
 //           has created (aka produced) an image and put that into a shared memory segment. This app
-//           then displays (aka consumes) the image. By slightly changing the code base of both app
-//           the behavior can be inverted.
+//           then displays (aka consumes) the image. By changing CONSUMER in the code base of both
+//           apps, the behavior can be inverted. It surely also works when using only C++ or only
+//           only Python apps (one consumer, one producer of course).
 
-// (System-wide) Unique name of the shared memory; must be equal in all apps using the memory:
-#define UNIQUE_SHARED_MEMORY_NAME  "MySharedMemoryDefault"
-// Hardcoded file name of file to be used for specifying an alternative name of the shared memory.
-// If that file exists, its first line is ALWAYS used as the shared memory's name:
-#define SHARED_MEMORY_KEY_FILE     "shared_memory.key"
-// (System-wide) Unique names of (system) semaphores to be used for synchronizing producer/consumer:
-#define UNIQUE_SEMAPHORE_EMPTY     "MySemaphoreEmpty"
-#define UNIQUE_SEMAPHORE_FULL      "MySemaphoreFull"
-
-// If defined, the application uses a dedicated thread for (passively) wait until an image was
-// produced. Uncomment to disable threading, making the app BLOCK after clicking "" until an image was produced.
-#define ENABLE_THREADED_WAITING
+#define CONSUMER 1 // 1: this is the consumer, 0: this is the producer
 
 #include <QDialog>
-#include <QSharedMemory>
-#include <QSystemSemaphore>
 #include <QString>
-#include <atomic>
 
 #include "ui_dialog.h"
-
-#ifdef ENABLE_THREADED_WAITING
-#include <QFuture>
+#if CONSUMER == 1
+#include "consumer_ipc.h"
+#elif CONSUMER == 0
+#include "producer_ipc.h"
+#else
+  #error Invalid value for <CONSUMER> define, should be 0 (= producer) or 1 (= consumer).
 #endif
 
 class ConsumerDialog : public QDialog {
@@ -87,33 +77,17 @@ class ConsumerDialog : public QDialog {
 
 public:
   ConsumerDialog(QWidget *parent = nullptr);
-  ~ConsumerDialog();
 
 public slots:
   void loadFromFile();
   void loadFromMemory();
 
 private:
-  void detach();
-
-#ifdef ENABLE_THREADED_WAITING
-  void updateThread();
-  std::atomic_bool terminate;
-#endif
-
-  static QString loadKey(const QString path);
-
   Ui::Dialog ui;
-  QSharedMemory sharedMemory;
-  QSystemSemaphore sem_empty;
-  QSystemSemaphore sem_full;
-#ifdef ENABLE_THREADED_WAITING
-  QFuture<void> future;
-#endif
-
-signals:
-#ifdef ENABLE_THREADED_WAITING
-  void available();
+#if CONSUMER == 1
+  ConsumerIPC cipc;
+#else
+  ProducerIPC pipc;
 #endif
 };
 

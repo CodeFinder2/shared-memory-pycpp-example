@@ -20,6 +20,12 @@ add_executable(${CMAKE_PROJECT_NAME}
   dialog.h
   dialog.cpp
   main.cpp
+  abstract_ipc.h
+  abstract_ipc.cpp
+  consumer_ipc.h
+  consumer_ipc.cpp
+  producer_ipc.h
+  producer_ipc.cpp
 )
 
 target_link_libraries(${CMAKE_PROJECT_NAME} Qt5::Widgets Qt5::Concurrent)
