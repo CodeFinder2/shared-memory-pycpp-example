@@ -1,3 +1,5 @@
+*TL;DR: To get started quickly, simply run `./run.sh` which will install all missing dependencies, compile the sources and run both demo applications side-by-side.*
+
 # Table of Contents  
 * [Overview](#overview)
 * [Installation](#install)
