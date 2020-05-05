@@ -55,8 +55,6 @@ CONSUMER = 0
 from PyQt5.QtCore import QBuffer, QDataStream
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
-from consumer_ipc import ConsumerIPC
-from producer_ipc import ProducerIPC
 from dialog import Ui_Dialog
 
 
@@ -77,11 +75,13 @@ class ProducerDialog(QDialog):
             self.ui.loadFromFileButton.clicked.connect(self.load_from_file)
             self.ui.loadFromSharedMemoryButton.setEnabled(False)
             self.setWindowTitle("Shared Memory Producer: Python Example")
+            from prodcon_ipc.producer_ipc import ProducerIPC
             self.producer_ipc = ProducerIPC()
         else:
             self.ui.loadFromSharedMemoryButton.clicked.connect(self.load_from_memory)
             self.ui.loadFromFileButton.setEnabled(False)
             self.setWindowTitle("Shared Memory Consumer: Python Example")
+            from prodcon_ipc.consumer_ipc import ConsumerIPC
             self.consumer_ipc = ConsumerIPC()
 
     def load_from_file(self):  # producer slot
