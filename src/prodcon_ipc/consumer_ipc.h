@@ -56,6 +56,7 @@ private:
   void updateThread();
   std::atomic_bool terminate; //!< \c to indicate \c updateThread() to terminate
   QFuture<void> future; //!< Instance used to spawn the update thread
+  std::atomic_bool data_acquired; //!< Indicates if data was received (set in \c updateThread())
 };
 
 /**

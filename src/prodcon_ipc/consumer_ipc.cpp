@@ -6,7 +6,7 @@
 #include <QtConcurrent>
 #include <QDebug>
 
-ConsumerIPC::ConsumerIPC(bool log_debug) : AbstractIPC(log_debug)
+ConsumerIPC::ConsumerIPC(bool log_debug) : AbstractIPC(log_debug), data_acquired(false)
 {
   if (log) {
     qDebug() << (QString("Compiled with Qt v") + QT_VERSION_STR).toStdString().c_str();
@@ -39,7 +39,12 @@ void ConsumerIPC::updateThread()
     if (log) {
       qDebug() << "Update thread: Waiting for an(other) image...";
     }
-    sem_full.acquire();
+    if (!sem_full.acquire()) {
+      if (log) {
+        qDebug() << "Unable to acquire system semaphore (sem_full): " << sem_full.errorString();
+      }
+    }
+    data_acquired = true;
 
     if (!terminate) {
       if (log) {
@@ -56,6 +61,16 @@ void ConsumerIPC::updateThread()
 
 int ConsumerIPC::begin(const char **data)
 {
+  // Check to ensure that its allowed to call this since the thread was really signaled...this way,
+  // it could happen that sem_empty.release() is called in end() although sem_full.acquire() in
+  // updateThread() was never triggered:
+  if (!data_acquired) {
+    if (log) {
+      qDebug() << "Data was not acquired yet. Wait until the signal ConsumerIPC::available() is "
+                  "emitted and call this method in a slot upon being notified.";
+    }
+    return -1;
+  }
   if (transaction_started) {
     if (log) {
       qDebug() << "Already started an transaction, call end() first to start a new one.";
@@ -91,6 +106,7 @@ void ConsumerIPC::end()
     }
     return;
   }
+  data_acquired = false;
   shared_memory.unlock();
   shared_memory.detach();
 
