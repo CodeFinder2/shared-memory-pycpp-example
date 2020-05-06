@@ -63,11 +63,14 @@ class ProducerIPC(abstract_ipc.AbstractIPC):
                 logzero.logger.info("Shared memory successfully created.")
 
         # Producer-consumer sync: we are the producer here, so wait for a free slot:
-        self._sem_empty.acquire()
+        if not self._sem_empty.acquire():
+            raise RuntimeError("Unable to acquire the system semaphore (_sem_empty): " + self._shared_memory.errorString())
 
-        self._shared_memory.lock()
-        self._transaction_started = True
-        return min(self._shared_memory.size(), desired_memory_size), self._shared_memory.data()
+        if self._shared_memory.lock():
+            self._transaction_started = True
+            return min(self._shared_memory.size(), desired_memory_size), self._shared_memory.data()
+        else:
+            raise RuntimeError("Unable to lock the shared memory block: " + self._shared_memory.errorString())
 
     def end(self):
         """
@@ -78,9 +81,11 @@ class ProducerIPC(abstract_ipc.AbstractIPC):
         """
         if not self._transaction_started:
             raise RuntimeError("You must call begin() first.")
-        self._shared_memory.unlock()
+        if not self._shared_memory.unlock() and self.log:
+            raise RuntimeError("Unlocking the shared memory failed: " + self._shared_memory.errorString())
 
         # We've written data, so let the consumer know that
-        self._sem_full.release()
+        if not self._sem_full.release() and self.log:
+            raise RuntimeError("Releasing the system semaphore failed: " + self._sem_full.errorString())
         self._transaction_started = False
         # Do not detech here to not let the shared memory be accidentally destroyed (e.g. on Windows).

@@ -4,6 +4,7 @@
 # This code is licensed under the BSD 3-Clause license (see LICENSE for details).
 
 import abstract_ipc
+import logzero
 
 
 class ConsumerIPC(abstract_ipc.AbstractIPC):
@@ -31,11 +32,15 @@ class ConsumerIPC(abstract_ipc.AbstractIPC):
         if self._transaction_started:
             raise RuntimeError("You must call end() first, cannot start a another transaction.")
 
-        if not self._shared_memory.attach():
-            raise RuntimeError("Unable to attach to shared memory segment.")
+        if not self._sem_full.acquire():
+            raise RuntimeError("Unable to acquire system semaphore (_sem_full): " + self._sem_full.errorString())
 
-        self._sem_full.acquire()
-        self._shared_memory.lock()
+        if not self._shared_memory.attach():
+            raise RuntimeError("Unable to attach to shared memory segment: " + self._shared_memory.errorString())
+
+        if not self._shared_memory.lock():
+            self._sem_full.release()
+            raise RuntimeError("Unable to attach to shared memory segment: " + self._shared_memory.errorString())
         self._transaction_started = True
         return self._shared_memory.constData()
 
@@ -45,7 +50,10 @@ class ConsumerIPC(abstract_ipc.AbstractIPC):
         """
         if not self._transaction_started:
             raise RuntimeError("You must call begin() first.")
-        self._shared_memory.unlock()
-        self._shared_memory.detach()
-        self._sem_empty.release()
+        if not self._shared_memory.unlock():
+            raise RuntimeError("Unable to unlock shared memory segment: " + self._shared_memory.errorString())
+        if not self._shared_memory.detach() and self.log:
+            logzero.logger.error("Unable to detach shared memory: " + self._shared_memory.errorString())
+        if not self._sem_empty.release():
+            raise RuntimeError("Unable to release system semaphore (_sem_empty): " + self._sem_empty.errorString())
         self._transaction_started = False
