@@ -57,6 +57,8 @@ from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from dialog import Ui_Dialog
 import logzero
+import sys
+import os.path
 
 
 class ProducerDialog(QDialog):
@@ -154,13 +156,61 @@ class ProducerDialog(QDialog):
             self.ui.label.setPixmap(QPixmap.fromImage(image))
 
 
-if __name__ == '__main__':
-    import sys
+def producer_scope_test(path):
+    import time
+    from prodcon_ipc.producer_ipc import ProducerIPC
+    producer_ipc = ProducerIPC()
+    image = QImage()
+    if not image.load(path):
+        logzero.logger.error("Unable to load image " + path)
+        sys.exit(1)
+    else:
+        # Load the image:
+        buf = QBuffer()
+        buf.open(QBuffer.ReadWrite)
+        out = QDataStream(buf)
+        out << image
 
+        try:
+            avail_size, mem_data = producer_ipc.begin(buf.size())
+        except RuntimeError as err:
+            logzero.logger.error(str(err))
+            sys.exit(2)
+
+        # Copy image data from buf into shared memory area:
+        error_str = None
+        try:
+            mem_data[:avail_size] = buf.data().data()[:avail_size]
+        except Exception as err:
+            logzero.logger.error(str(err))
+            sys.exit(3)
+
+        try:
+            producer_ipc.end()
+        except RuntimeError as err:
+            logzero.logger.error(str(err))
+            sys.exit(3)
+
+    logzero.logger.info("All okay")
+    # IMPORTANT: The object should NOT go out of scope until the consumer has read the data, so (also) dont call:
+    # del producer_ipc
+    # ...or let the app exit right away. That's why we do here:
+    try:
+        input("Press Enter to exit but let the consumer read the image first...")
+    except:
+        sys.stdout.write("\n")
+        pass
+    sys.exit(0)
+
+
+if __name__ == '__main__':
     if 'consumer' in sys.argv:
         CONSUMER = 1
     elif 'producer' in sys.argv:
         CONSUMER = 0
+    elif len(sys.argv) > 1 and os.path.exists(sys.argv[1]) and (sys.argv[1].endswith('.png') or
+                                                                sys.argv[1].endswith('.jpg')):
+        producer_scope_test(sys.argv[1])
 
     logzero.logger.debug("I am the " + ('consumer.' if CONSUMER == 1 else 'producer.'))
 
