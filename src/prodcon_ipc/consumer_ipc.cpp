@@ -35,9 +35,9 @@ ConsumerIPC::~ConsumerIPC()
 void ConsumerIPC::updateThread()
 {
   while (!terminate) {
-    // Passively wait until an image is ready to be displayed:
+    // Passively wait until a data is ready:
     if (log) {
-      qDebug() << "Update thread: Waiting for an(other) image...";
+      qDebug() << "Update thread: Waiting for data...";
     }
     if (!sem_full.acquire()) {
       if (log) {
@@ -48,7 +48,7 @@ void ConsumerIPC::updateThread()
 
     if (!terminate) {
       if (log) {
-        qDebug() << "Producer signaled that an image is ready! Triggering UI thread...";
+        qDebug() << "Producer signaled that data is ready! Triggering UI thread...";
       }
       // Signal the GUI thread to display it:
       emit available();
@@ -84,15 +84,20 @@ int ConsumerIPC::begin(const char **data)
     return -1;
   }
 
-  // Now, consume it (= display the image):
+  // Now, consume it:
   if (!shared_memory.attach()) {
     if (log) {
-      qDebug() << "Unable to attach to shared memory segment.\nLoad an image first.";
+      qDebug() << "Unable to attach to shared memory segment: " << shared_memory.errorString();
     }
     return -1;
   }
 
-  shared_memory.lock();
+  if (!shared_memory.lock()) {
+    if (log) {
+      qDebug() << "Unable to lock shared memory segment: " << shared_memory.errorString();
+    }
+    return -1;
+  }
   *data = static_cast<const char*>(shared_memory.constData());
   transaction_started = true;
   return shared_memory.size();
@@ -111,8 +116,12 @@ void ConsumerIPC::end()
   shared_memory.detach();
 
   if (log) {
-    qDebug() << "Signaling that the produced image was consumed (displayed)...";
+    qDebug() << "Signaling that the produced data was consumed...";
   }
-  sem_empty.release();
+  if (!sem_empty.release()) {
+    if (log) {
+      qDebug() << "Unable to release system semaphore (sem_empty): " << sem_empty.errorString();
+    }
+  }
   transaction_started = false;
 }
