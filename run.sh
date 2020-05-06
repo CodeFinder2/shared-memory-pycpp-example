@@ -30,7 +30,7 @@ if ! [ -x "$(command -v gcc)" ]; then
    fi
 fi
 
-pkgs='qtbase5-dev pyqt5-devd'
+pkgs='qtbase5-dev pyqt5-dev'
 if ! dpkg -s $pkgs >/dev/null 2>&1; then
    read -p "One or all of {$pkgs} not found (compilation dependencies)! Install? (y/n) " -n 1 -r
    echo # move to a new line
