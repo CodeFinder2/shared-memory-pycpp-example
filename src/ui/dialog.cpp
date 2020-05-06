@@ -62,6 +62,7 @@ ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent)
 {
   ui.setupUi(this);
 #if CONSUMER == 1
+  qDebug() << "I am the consumer.";
   connect(ui.loadFromSharedMemoryButton, &QPushButton::clicked, [this](){
           this->ui.label->setText(tr("Please wait until an image was produced from the Python app "
                                      "(load an image therefrom); it will be shown here "
@@ -74,6 +75,7 @@ ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent)
 
   connect(&this->cipc, &ConsumerIPC::available, this, &ConsumerDialog::loadFromMemory);
 #else
+  qDebug() << "I am the producer.";
   connect(ui.loadFromFileButton, &QPushButton::clicked, this, &ConsumerDialog::loadFromFile);
   setWindowTitle(tr("Shared Memory Producer: C++ Example"));
   // Since we pretend to be the producer (as a demo, to make it clear), disable load from
