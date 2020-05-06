@@ -56,6 +56,7 @@ from PyQt5.QtCore import QBuffer, QDataStream
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from dialog import Ui_Dialog
+import logzero
 
 
 class ProducerDialog(QDialog):
@@ -103,7 +104,11 @@ class ProducerDialog(QDialog):
         out = QDataStream(buf)
         out << image
 
-        avail_size, mem_data = self.producer_ipc.begin(buf.size())
+        try:
+            avail_size, mem_data = self.producer_ipc.begin(buf.size())
+        except RuntimeError as err:
+            self.ui.label.setText(str(err))
+            return
 
         # Copy image data from buf into shared memory area:
         error_str = None
@@ -112,7 +117,10 @@ class ProducerDialog(QDialog):
         except Exception as err:
             error_str = str(err)
 
-        self.producer_ipc.end()
+        try:
+            self.producer_ipc.end()
+        except RuntimeError as err:
+            error_str = str(err)
 
         if error_str:
             self.ui.label.setText(error_str)
@@ -122,20 +130,39 @@ class ProducerDialog(QDialog):
         ins = QDataStream(buf)
         image = QImage()
 
-        data = self.consumer_ipc.begin()
+        try:
+            data = self.consumer_ipc.begin()
+        except RuntimeError as err:
+            self.ui.label.setText(str(err))
+            return
 
         # Read from the shared memory:
-        buf.setData(data)
-        buf.open(QBuffer.ReadOnly)
-        ins >> image
+        try:
+            buf.setData(data)
+            buf.open(QBuffer.ReadOnly)
+            ins >> image
+        except Exception as err:
+            logzero.logger.error(str(err))
 
-        self.consumer_ipc.end()
+        try:
+            self.consumer_ipc.end()
+        except RuntimeError as err:
+            self.ui.label.setText(str(err))
+            return
 
-        self.ui.label.setPixmap(QPixmap.fromImage(image))
+        if not image.isNull():
+            self.ui.label.setPixmap(QPixmap.fromImage(image))
 
 
 if __name__ == '__main__':
     import sys
+
+    if 'consumer' in sys.argv:
+        CONSUMER = 1
+    elif 'producer' in sys.argv:
+        CONSUMER = 0
+
+    logzero.logger.debug("I am the " + ('consumer.' if CONSUMER == 1 else 'producer.'))
 
     app = QApplication(sys.argv)
     dialog = ProducerDialog()
