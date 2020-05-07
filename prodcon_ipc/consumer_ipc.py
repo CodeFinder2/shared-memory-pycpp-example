@@ -36,11 +36,14 @@ class ConsumerIPC(abstract_ipc.AbstractIPC):
             raise RuntimeError("Unable to acquire system semaphore (_sem_full): " + self._sem_full.errorString())
 
         if not self._shared_memory.attach():
+            self._sem_full.release()  # undo
             raise RuntimeError("Unable to attach to shared memory segment: " + self._shared_memory.errorString())
 
         if not self._shared_memory.lock():
-            self._sem_full.release()
-            raise RuntimeError("Unable to attach to shared memory segment: " + self._shared_memory.errorString())
+            err_str = self._shared_memory.errorString()  # may be overwritten by errors in detach()
+            self._sem_full.release()  # dito
+            self._shared_memory.detach()  # dito
+            raise RuntimeError("Unable to attach to shared memory segment: " + err_str)
         self._transaction_started = True
         return self._shared_memory.constData()
 
