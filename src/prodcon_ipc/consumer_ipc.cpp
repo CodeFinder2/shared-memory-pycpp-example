@@ -89,6 +89,7 @@ int ConsumerIPC::begin(const char **data)
     if (log) {
       qDebug() << "Unable to attach to shared memory segment: " << shared_memory.errorString();
     }
+    sem_empty.release(); // undo (data may be lost)
     return -1;
   }
 
@@ -96,6 +97,8 @@ int ConsumerIPC::begin(const char **data)
     if (log) {
       qDebug() << "Unable to lock shared memory segment: " << shared_memory.errorString();
     }
+    shared_memory.detach(); // dito
+    sem_empty.release();
     return -1;
   }
   *data = static_cast<const char*>(shared_memory.constData());

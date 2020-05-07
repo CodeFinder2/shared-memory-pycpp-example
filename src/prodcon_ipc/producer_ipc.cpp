@@ -41,8 +41,19 @@ int ProducerIPC::begin(int desired_size, char **data)
     }
   }
 
-  sem_empty.acquire();
-  shared_memory.lock();
+  if (!sem_empty.acquire()) {
+    if (log) {
+      qDebug() << "Unable to acquire system semaphore (sem_empty): " << sem_empty.errorString();
+    }
+    return -1;
+  }
+  if (!shared_memory.lock()) {
+    sem_full.release(); // undo acquire
+    if (log) {
+      qDebug() << "Unable to lock shared memory: " << shared_memory.errorString();
+    }
+    return -1;
+  }
   *data = static_cast<char*>(shared_memory.data());
   transaction_started = true;
   return qMin(shared_memory.size(), desired_size);
