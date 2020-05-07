@@ -44,6 +44,8 @@
 ##
 #############################################################################
 
+from __future__ import with_statement
+
 # Abstract: this Python app contains the producer logic. Upon selecting an image file to load, it
 #           will be displayed in the UI and copied to the shared memory (producing). The consumer
 #           can then display (= consume) it as well. Don't (try to) load another image if the
@@ -107,53 +109,53 @@ class ProducerDialog(QDialog):
         out << image
 
         try:
-            avail_size, mem_data = self.producer_ipc.begin(buf.size())
-        except RuntimeError as err:
-            self.ui.label.setText(str(err))
-            return
-
-        # Copy image data from buf into shared memory area:
-        error_str = None
-        try:
-            mem_data[:avail_size] = buf.data().data()[:avail_size]
+            from prodcon_ipc.producer_ipc import ScopedProducer
+            with ScopedProducer(self.producer_ipc, buf.size()) as sp:
+                # Copy image data from buf into shared memory area:
+                sp.data()[:sp.size()] = buf.data().data()[:sp.size()]
         except Exception as err:
-            error_str = str(err)
-
-        try:
-            self.producer_ipc.end()
-        except RuntimeError as err:
-            error_str = str(err)
-
-        if error_str:
-            self.ui.label.setText(error_str)
+            self.ui.label.setText(str(err))
 
     def load_from_memory(self):  # consumer slot
         buf = QBuffer()
         ins = QDataStream(buf)
         image = QImage()
 
-        try:
-            data = self.consumer_ipc.begin()
-        except RuntimeError as err:
-            self.ui.label.setText(str(err))
-            return
+        if True:  # first variant (much simpler / shorter, more robust)
+            try:
+                from prodcon_ipc.consumer_ipc import ScopedConsumer
+                with ScopedConsumer(self.consumer_ipc) as sc:
+                    buf.setData(sc.data())
+                    buf.open(QBuffer.ReadOnly)
+                    ins >> image
+            except Exception as err:
+                self.ui.label.setText(str(err))
 
-        # Read from the shared memory:
-        try:
-            buf.setData(data)
-            buf.open(QBuffer.ReadOnly)
-            ins >> image
-        except Exception as err:
-            logzero.logger.error(str(err))
+        else:  # second variant, using begin()...end() manually
+            try:
+                data = self.consumer_ipc.begin()
+            except RuntimeError as err:
+                self.ui.label.setText(str(err))
+                return
 
-        try:
-            self.consumer_ipc.end()
-        except RuntimeError as err:
-            self.ui.label.setText(str(err))
-            return
+            # Read from the shared memory:
+            try:
+                buf.setData(data)
+                buf.open(QBuffer.ReadOnly)
+                ins >> image
+            except Exception as err:
+                logzero.logger.error(str(err))
+
+            try:
+                self.consumer_ipc.end()
+            except RuntimeError as err:
+                self.ui.label.setText(str(err))
+                return
 
         if not image.isNull():
             self.ui.label.setPixmap(QPixmap.fromImage(image))
+        else:
+            logzero.logger.error("Image data was corrupted.")
 
 
 def producer_scope_test(path):
