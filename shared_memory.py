@@ -158,40 +158,63 @@ class ProducerDialog(QDialog):
             logzero.logger.error("Image data was corrupted.")
 
 
-def producer_scope_test(path):
+def producer_repetitive_scope_test(path, repetitions=1, delay=0):  # producer with repetitive writes to shared memory
     import time
+    from PyQt5.QtGui import QPainter, QPixmap, QColor, QFont, QPen
+    from PyQt5.QtCore import Qt
     from prodcon_ipc.producer_ipc import ProducerIPC
+
+    # FIXME: this is still buggy because when the images are not read sufficiently fast from the consumer (which
+    #       only (?) happens in the non-async Python consumer), image data gets corrupted (may be overwritten by the
+    #       producer?! but this SHOULD be prevented by the system semaphores and the producer/consumer sync...)
+
     producer_ipc = ProducerIPC()
-    image = QImage()
-    if not image.load(path):
-        logzero.logger.error("Unable to load image " + path)
-        sys.exit(1)
-    else:
-        # Load the image:
-        buf = QBuffer()
-        buf.open(QBuffer.ReadWrite)
-        out = QDataStream(buf)
-        out << image
+    for i in range(repetitions):
+        image = QImage()
+        if not image.load(path):
+            logzero.logger.error("Unable to load image " + path)
+            sys.exit(1)
+        else:
+            pm = QPixmap.fromImage(image)  # .convertToFormat(QImage.Format_RGB32)
 
-        try:
-            avail_size, mem_data = producer_ipc.begin(buf.size())
-        except RuntimeError as err:
-            logzero.logger.error(str(err))
-            sys.exit(2)
+            p = QPainter()
+            p.begin(pm)
+            p.setPen(QPen(Qt.yellow))
+            p.setFont(QFont("Times", 20, QFont.Bold))
+            p.drawText(pm.rect(), Qt.AlignCenter, str(i+1) + " of " + str(repetitions))
+            p.end()
 
-        # Copy image data from buf into shared memory area:
-        error_str = None
-        try:
-            mem_data[:avail_size] = buf.data().data()[:avail_size]
-        except Exception as err:
-            logzero.logger.error(str(err))
-            sys.exit(3)
+            image = pm.toImage()
 
-        try:
-            producer_ipc.end()
-        except RuntimeError as err:
-            logzero.logger.error(str(err))
-            sys.exit(3)
+            # Load the image:
+            buf = QBuffer()
+            buf.open(QBuffer.ReadWrite)
+            out = QDataStream(buf)
+            out << image
+
+            try:
+                avail_size, mem_data = producer_ipc.begin(buf.size())
+                if avail_size < buf.size():
+                    logzero.logger.warn("Couldn't get enough memory!")
+            except RuntimeError as err:
+                logzero.logger.error(str(err))
+                sys.exit(2)
+
+            # Copy image data from buf into shared memory area:
+            error_str = None
+            try:
+                mem_data[:avail_size] = buf.data().data()[:avail_size]
+            except Exception as err:
+                logzero.logger.error(str(err))
+
+            try:
+                producer_ipc.end()
+            except RuntimeError as err:
+                logzero.logger.error(str(err))
+                sys.exit(3)
+            if delay > 0:
+                time.sleep(delay)
+        logzero.logger.debug("Iteration " + str(i + 1) + " of " + str(repetitions) + " completed.")
 
     logzero.logger.info("All okay")
     # IMPORTANT: The object should NOT go out of scope until the consumer has read the data, so (also) dont call:
@@ -206,13 +229,15 @@ def producer_scope_test(path):
 
 
 if __name__ == '__main__':
+    app = QApplication(sys.argv)
+
     if 'consumer' in sys.argv:
         CONSUMER = 1
     elif 'producer' in sys.argv:
         CONSUMER = 0
     elif len(sys.argv) > 1 and os.path.exists(sys.argv[1]) and (sys.argv[1].endswith('.png') or
                                                                 sys.argv[1].endswith('.jpg')):
-        producer_scope_test(sys.argv[1])
+        producer_repetitive_scope_test(sys.argv[1], 5, 0)
 
     logzero.logger.debug("I am the " + ('consumer.' if CONSUMER == 1 else 'producer.'))
 
