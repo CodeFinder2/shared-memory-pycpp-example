@@ -32,7 +32,8 @@ public:
   ~ConsumerIPC();
 
   /**
-   * Begins "consuming" the memory, i.e., starts a transaction on the shared memory block.
+   * Begins "consuming" the memory, i.e., starts a transaction on the shared memory block. Don't
+   * call \c end() if this returns with errors!
    * \param [out] data Pointer to shared memory block
    * \return number of bytes that \c data addresses, may be <= 0 in case of errors
    * \see end()
