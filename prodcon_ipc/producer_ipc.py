@@ -89,3 +89,45 @@ class ProducerIPC(abstract_ipc.AbstractIPC):
             raise RuntimeError("Releasing the system semaphore failed: " + self._sem_full.errorString())
         self._transaction_started = False
         # Do not detech here to not let the shared memory be accidentally destroyed (e.g. on Windows).
+
+
+class ScopedProducer(object):
+    """
+    Allows to use an object of ProducerIPC in combination with Python's "with" statement conveniently.
+    """
+    def __init__(self, producer_ipc, desired_memory_size):
+        assert isinstance(producer_ipc, ProducerIPC)
+        self.__prod_ipc = producer_ipc
+        self.__size = desired_memory_size
+        self.__success = False
+        self.__data = None
+        self.__avail_size = -1
+
+    def __enter__(self):
+        try:
+            self.__avail_size, self.__data = self.__prod_ipc.begin(self.__size)
+            self.__success = True
+        except RuntimeError:
+            self.__success = False
+            raise
+        return self
+
+    def data(self):
+        """
+        Returns the shared memory to allow writing data to it
+
+        :return: Bytes of the shared memory
+        """
+        return self.__data if self.__success else None
+
+    def size(self):
+        """
+        Returns the available bytes in the shared memory block.
+
+        :return: Size in bytes, maybe < desired_memory_size provided in the constructor
+        """
+        return self.__avail_size if self.__success else None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.__success:
+            self.__prod_ipc.end()

@@ -60,3 +60,35 @@ class ConsumerIPC(abstract_ipc.AbstractIPC):
         if not self._sem_empty.release():
             raise RuntimeError("Unable to release system semaphore (_sem_empty): " + self._sem_empty.errorString())
         self._transaction_started = False
+
+
+class ScopedConsumer(object):
+    """
+    Allows to use an object of ConsumerIPC in combination with Python's "with" statement conveniently.
+    """
+    def __init__(self, consumer_ipc):
+        assert isinstance(consumer_ipc, ConsumerIPC)
+        self.__con_ipc = consumer_ipc
+        self.__success = False
+        self.__data = None
+
+    def __enter__(self):
+        try:
+            self.__data = self.__con_ipc.begin()
+            self.__success = True
+        except RuntimeError:
+            self.__success = False
+            raise
+        return self
+
+    def data(self):
+        """
+        Returns the shared memory block.
+
+        :return: bytes of the shared memory area
+        """
+        return self.__data if self.__success else None
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        if self.__success:
+            self.__con_ipc.end()
