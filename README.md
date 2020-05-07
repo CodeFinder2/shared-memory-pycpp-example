@@ -1,4 +1,4 @@
-*TL;DR: To get started quickly on Debian/Ubuntu like systems, simply run `./run.sh` which will install all missing dependencies, compile the sources and run both demo applications side-by-side.*
+*TL;DR: To get started quickly on Debian/Ubuntu like systems, simply run `./run.sh` which will install all missing dependencies, compile the sources and run both demo applications side-by-side. To simply re-use these wrappers, take a look at `prodcon_ipc/`(for Python) or `src/prodcon_ipc/` (for C++).*
 
 # Table of Contents  
 * [Overview](#overview)
