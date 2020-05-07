@@ -102,7 +102,7 @@ class ProducerDialog(QDialog):
 
         self.ui.label.setPixmap(QPixmap.fromImage(image))
 
-        # Load the image:
+        # Get the image data:
         buf = QBuffer()
         buf.open(QBuffer.ReadWrite)
         out = QDataStream(buf)
