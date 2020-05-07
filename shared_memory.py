@@ -241,7 +241,6 @@ if __name__ == '__main__':
 
     logzero.logger.debug("I am the " + ('consumer.' if CONSUMER == 1 else 'producer.'))
 
-    app = QApplication(sys.argv)
     dialog = ProducerDialog()
     dialog.show()
     result = 0
