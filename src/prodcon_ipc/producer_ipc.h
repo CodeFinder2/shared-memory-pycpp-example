@@ -18,6 +18,10 @@
  * data needs. A pointer to the allocated shared memory is then provided in \c data. Afterwards,
  * call end to complete the transaction. Alternatively, use \c ScopedProducer for a even simpler
  * use.
+ *
+ * \todo add a signal `void consumed()` to allow using this class asynchronously but keep this sync
+ *       variant since in most cases, "production" requires more time is done in a dedicated thread
+ *       anyway so blocking that thread isn't a problem (and often desired)
  */
 class ProducerIPC : public AbstractIPC {
   Q_OBJECT
