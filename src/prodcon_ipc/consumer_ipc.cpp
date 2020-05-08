@@ -6,7 +6,8 @@
 #include <QtConcurrent>
 #include <QDebug>
 
-ConsumerIPC::ConsumerIPC(bool log_debug) : AbstractIPC(log_debug), data_acquired(false)
+ConsumerIPC::ConsumerIPC(const QString &id, const QString &key_file_path, bool log_debug)
+  : AbstractIPC(id, key_file_path, log_debug), data_acquired(false)
 {
   if (log) {
     qDebug() << (QString("Compiled with Qt v") + QT_VERSION_STR).toStdString().c_str();

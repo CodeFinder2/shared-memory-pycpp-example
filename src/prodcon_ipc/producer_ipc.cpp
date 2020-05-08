@@ -5,6 +5,16 @@
 
 #include <QDebug>
 
+ProducerIPC::ProducerIPC(const QString &id, const QString &key_file_path, bool log_debug)
+  : AbstractIPC(id, key_file_path, log_debug)
+{
+  if (log) {
+    qDebug() << (QString("Compiled with Qt v") + QT_VERSION_STR).toStdString().c_str();
+    qDebug() << "Creating shared memory with key=" << shared_memory.key()
+             << (file_key.isEmpty() ? " (hardcoded)" : " (loaded from file)");
+  }
+}
+
 ProducerIPC::~ProducerIPC() { detach(); }
 
 int ProducerIPC::begin(int desired_size, char **data)

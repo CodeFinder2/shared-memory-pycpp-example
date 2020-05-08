@@ -8,15 +8,12 @@
 #include <QSystemSemaphore>
 #include <QString>
 
-// (System-wide) Unique name of the shared memory; must be equal in all apps using the memory:
-#define UNIQUE_SHARED_MEMORY_NAME  "MySharedMemoryDefault"
-// Hardcoded file name of file to be used for specifying an alternative name of the shared memory.
-// If that file exists, its first line is ALWAYS used as the shared memory's name:
-#define SHARED_MEMORY_KEY_FILE     "shared_memory.key"
-// (System-wide) Unique names of (system) semaphores to be used for synchronizing producer/consumer:
-#define UNIQUE_SEMAPHORE_EMPTY     "MySemaphoreEmpty"
-#define UNIQUE_SEMAPHORE_FULL      "MySemaphoreFull"
-
+/**
+ * \interface AbstractIPC
+ * \brief Abstract base class for the \c ConsumerIPC and \c ProducerIPC classes
+ *
+ * This class contains all functionality that \c ConsumerIPC and \c ProducerIPC have in common.
+ */
 class AbstractIPC : public QObject {
 Q_OBJECT
 
@@ -25,9 +22,15 @@ Q_OBJECT
 protected:
   /**
    * Creates the underlying system ressources.
-   * \param [in] log_debug \c true to enable logging to \c qDebug(), \c false otherwise
+   * \param [in] id Unique system-wide unique name of shared memory; this name is also used to
+   *        create the unique names for the two system-semapores `$id + "_sem_full"` and
+   *        `$id + "_sem_empty"`
+   * \param [in] key_file_path Optional file path to a file typically named "shared_memory.key"
+   *             whose first line is used as the unique ID/name of the shared memory IF this file
+   *             exists, can be empty (the default) which then uses \c id (first parameter)
+   * \param [in] log_debug \c true to enable logging to \c qDebug() (default), \c false otherwise
    */
-  AbstractIPC(bool log_debug = true);
+  AbstractIPC(const QString &id, const QString &key_file_path = QString(), bool log_debug = true);
   /// Does nothing yet (but required due to a pure virtual function above).
   virtual ~AbstractIPC();
   /**
@@ -45,7 +48,7 @@ protected:
   QSystemSemaphore sem_empty; //!< System-wide semaphore to indicate the #(free slots)
   QSystemSemaphore sem_full; //!< System-wide semaphore to indicate the #(full slots)
   QString file_key; //!< Unique name of shared memory loaded from file (may be empty)
-  bool transaction_started = false;
+  bool transaction_started = false; //!< \c true if \c begin() has been called, \c false otherwise
 };
 
 #endif // ABSTRACT_IPC_H

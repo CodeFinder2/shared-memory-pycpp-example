@@ -14,16 +14,19 @@ class ProducerIPC(abstract_ipc.AbstractIPC):
 
     Basically, to put data into the shared memory, call `begin()` with the amount of memory your data needs. You can
     then store the data under the provided `data` attribute. Afterwards, call `end()` to complete the transaction.
-
-    TODO: would be nice to add 'with' support (__enter__, __exit__)
     """
-    def __init__(self, log=True):
+    def __init__(self, id, key_file_path=None, log=True):
         """
         Creates the shared memory reference and the internal semaphores.
 
+        :param id: Unique system-wide unique name (str) of shared memory; this name is also used to create the unique
+        names for the two system-semapores `$id + "_sem_full"` and `$id + "_sem_empty"`
+        :param key_file_path: Optional file path to a file typically named "shared_memory.key" whose first line is used
+        as the unique ID/name of the shared memory IF this file exists, can be empty (the default) which then uses `id`
+        (first parameter)
         :param log: `True` to enable logging using `logzero.logger`, `False` otherwise
         """
-        abstract_ipc.AbstractIPC.__init__(self, log)
+        abstract_ipc.AbstractIPC.__init__(self, id, key_file_path, log)
 
     def __del__(self):
         # VERY IMPORTANT: ensure to call unlock() if not needed anymore AND to

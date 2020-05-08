@@ -58,7 +58,12 @@
 #include <QTextStream>
 #include <QThread>
 
-ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent)
+ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent),
+  #if CONSUMER == 1
+    cipc(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
+  #else
+    pipc(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
+  #endif
 {
   ui.setupUi(this);
 #if CONSUMER == 1

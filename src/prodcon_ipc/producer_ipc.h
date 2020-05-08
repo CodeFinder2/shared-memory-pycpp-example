@@ -27,11 +27,8 @@ class ProducerIPC : public AbstractIPC {
   Q_OBJECT
 
 public:
-  /**
-   * Creates the shared memory reference and the internal semaphores.
-   * \param [in] log_debug \c true to enable logging to \c qDebug(), \c false to disable logging
-   */
-  ProducerIPC(bool log_debug = true) : AbstractIPC(log_debug) { }
+  /// \copydoc AbstractIPC::AbstractIPC()
+  ProducerIPC(const QString &id, const QString &key_file_path = QString(), bool log_debug = true);
   /// Detaches from the shared memory.
   ~ProducerIPC();
   /**

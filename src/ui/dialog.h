@@ -60,6 +60,12 @@
 
 #define CONSUMER 1 // 1: this is the consumer, 0: this is the producer
 
+// (System-wide) Unique name of the shared memory; must be equal in all apps using the memory:
+#define UNIQUE_SHARED_MEMORY_NAME  "MySharedMemoryDefault"
+// Hardcoded file name of file to be used for specifying an alternative name of the shared memory.
+// If that file exists, its first line is ALWAYS used as the shared memory's name:
+#define SHARED_MEMORY_KEY_FILE     "shared_memory.key"
+
 #include <QDialog>
 #include <QString>
 

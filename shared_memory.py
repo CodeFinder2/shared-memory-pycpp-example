@@ -54,6 +54,9 @@ from __future__ import with_statement
 
 CONSUMER = 0
 
+UNIQUE_SHARED_MEMORY_NAME = "MySharedMemoryDefault"
+SHARED_MEMORY_KEY_FILE = "shared_memory.key"
+
 from PyQt5.QtCore import QBuffer, QDataStream
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
@@ -81,13 +84,13 @@ class ProducerDialog(QDialog):
             self.ui.loadFromSharedMemoryButton.setEnabled(False)
             self.setWindowTitle("Shared Memory Producer: Python Example")
             from prodcon_ipc.producer_ipc import ProducerIPC
-            self.producer_ipc = ProducerIPC()
+            self.producer_ipc = ProducerIPC(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
         else:
             self.ui.loadFromSharedMemoryButton.clicked.connect(self.load_from_memory)
             self.ui.loadFromFileButton.setEnabled(False)
             self.setWindowTitle("Shared Memory Consumer: Python Example")
             from prodcon_ipc.consumer_ipc import ConsumerIPC
-            self.consumer_ipc = ConsumerIPC()
+            self.consumer_ipc = ConsumerIPC(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
 
     def load_from_file(self):  # producer slot
         self.ui.label.setText("Select an image file")
@@ -168,7 +171,7 @@ def producer_repetitive_scope_test(path, repetitions=1, delay=0):  # producer wi
     #       only (?) happens in the non-async Python consumer), image data gets corrupted (may be overwritten by the
     #       producer?! but this SHOULD be prevented by the system semaphores and the producer/consumer sync...)
 
-    producer_ipc = ProducerIPC()
+    producer_ipc = ProducerIPC(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
     for i in range(repetitions):
         image = QImage()
         if not image.load(path):

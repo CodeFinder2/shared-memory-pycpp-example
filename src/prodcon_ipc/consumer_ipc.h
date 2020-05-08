@@ -23,11 +23,8 @@ class ConsumerIPC : public AbstractIPC {
   Q_OBJECT
 
 public:
-  /**
-   * Creates the shared memory reference and the internal semaphores.
-   * \param [in] log_debug \c true to enable logging to \c qDebug(), \c false to disable logging
-   */
-  ConsumerIPC(bool log_debug = true);
+  /// \copydoc AbstractIPC::AbstractIPC()
+  ConsumerIPC(const QString &id, const QString &key_file_path = QString(), bool log_debug = true);
   /// Terminates the updater thread.
   ~ConsumerIPC();
 

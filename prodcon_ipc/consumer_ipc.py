@@ -15,13 +15,18 @@ class ConsumerIPC(abstract_ipc.AbstractIPC):
     Basically, the signal  available() is emitted once data was produced and put into the shared
  * memory. Once triggered, use \c begin() ... \c end() to access the data.
     """
-    def __init__(self, log=True):
+    def __init__(self, id, key_file_path=None, log=True):
         """
         Creates the shared memory reference and the internal semaphores.
 
+        :param id: Unique system-wide unique name (str) of shared memory; this name is also used to create the unique
+        names for the two system-semapores `$id + "_sem_full"` and `$id + "_sem_empty"`
+        :param key_file_path: Optional file path to a file typically named "shared_memory.key" whose first line is used
+        as the unique ID/name of the shared memory IF this file exists, can be empty (the default) which then uses `id`
+        (first parameter)
         :param log: `True` to enable logging using `logzero.logger`, `False` otherwise
         """
-        abstract_ipc.AbstractIPC.__init__(self, log)
+        abstract_ipc.AbstractIPC.__init__(self, id, key_file_path, log)
 
     def begin(self):
         """

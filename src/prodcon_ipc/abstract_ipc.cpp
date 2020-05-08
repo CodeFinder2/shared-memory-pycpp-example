@@ -10,14 +10,14 @@
 #include <QTextStream>
 #include <QDebug>
 
-AbstractIPC::AbstractIPC(bool log_debug) : log(log_debug),
-  shared_memory(UNIQUE_SHARED_MEMORY_NAME),
-  sem_empty(UNIQUE_SEMAPHORE_EMPTY, 1, QSystemSemaphore::AccessMode::Create),
-  sem_full(UNIQUE_SEMAPHORE_FULL, 0, QSystemSemaphore::AccessMode::Create)
+AbstractIPC::AbstractIPC(const QString &id, const QString &key_file_path, bool log_debug) : log(log_debug),
+  shared_memory(id),
+  sem_empty(id + "_sem_empty", 1, QSystemSemaphore::AccessMode::Create),
+  sem_full(id + "_sem_full", 0, QSystemSemaphore::AccessMode::Create)
 {
   // Set unique name (key) of shared memory handle, use file if exiting and otherwise hardcoded
   // name:
-  file_key = loadKey(SHARED_MEMORY_KEY_FILE);
+  file_key = loadKey(key_file_path);
   if (!file_key.isEmpty()) {
     shared_memory.setKey(file_key);
   }
@@ -27,6 +27,9 @@ AbstractIPC::~AbstractIPC() { }
 
 QString AbstractIPC::loadKey(const QString path) const
 {
+  if (path.isEmpty()) {
+    return QString();
+  }
   QFile file(path);
   if (file.open(QIODevice::ReadOnly)) {
     QTextStream in_str(&file);
