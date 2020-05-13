@@ -58,8 +58,15 @@
 #include <QTextStream>
 #include <QThread>
 
+#ifdef SHARED_STRUCT
+#include <cppystruct.h>
+#endif
+
 ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent),
   #if CONSUMER == 1
+   #ifdef SHARED_STRUCT
+    shmem_config("shared_struct_test"),
+   #endif
     cipc(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
   #else
     pipc(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
@@ -79,6 +86,26 @@ ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent),
   ui.loadFromFileButton->setEnabled(false);
 
   connect(&this->cipc, &ConsumerIPC::available, this, &ConsumerDialog::loadFromMemory);
+
+#ifdef SHARED_STRUCT
+  const auto N = pystruct::calcsize(PY_STRING(STRUCT_FORMAT));
+  if (shmem_config.create(N) || shmem_config.isAttached() || shmem_config.attach()) {
+    if (shmem_config.lock()) {
+      uint32_t counter = 42;
+      bool stop_flag = false;
+      const char buf[30] = "this_is_a_long_file_name.ext";
+      auto packed = pystruct::pack(PY_STRING(STRUCT_FORMAT), counter, stop_flag, buf);
+      memcpy(shmem_config.data(), packed.data(), qMin(packed.size(), size_t(shmem_config.size())));
+      shmem_config.unlock();
+      qDebug() << "Initial struct created, size=" << N;
+    } else {
+      qDebug() << "Unable to lock " << shmem_config.key();
+    }
+    //shmem_config.detach();
+  } else {
+    qDebug() << "Unable to create shared memory " << shmem_config.key();
+  }
+#endif
 #else
   qDebug() << "I am the producer.";
   connect(ui.loadFromFileButton, &QPushButton::clicked, this, &ConsumerDialog::loadFromFile);
@@ -86,6 +113,30 @@ ConsumerDialog::ConsumerDialog(QWidget *parent) : QDialog(parent),
   // Since we pretend to be the producer (as a demo, to make it clear), disable load from
   // memory (= consuming):
   ui.loadFromSharedMemoryButton->setEnabled(false);
+#endif
+}
+
+ConsumerDialog::~ConsumerDialog()
+{
+#if defined SHARED_STRUCT && CONSUMER == 1
+  if (shmem_config.isAttached() || shmem_config.attach()) {
+    if (shmem_config.lock()) {
+      auto p = static_cast<const char*>(shmem_config.constData());
+      std::vector<char> v(p, p + shmem_config.size());
+      auto res = pystruct::unpack(PY_STRING(STRUCT_FORMAT), v);
+      qDebug() << "Shared memory struct read: counter=" << std::get<0>(res) << ", stop_flag=" << std::get<1>(res)
+               << ", file_name=" << std::string(std::get<2>(res)).c_str();
+      qDebug() << "Stopping the producer...";
+      auto packed = pystruct::pack(PY_STRING(STRUCT_FORMAT), std::get<0>(res), true, std::get<2>(res));
+      memcpy(shmem_config.data(), packed.data(), qMin(packed.size(), size_t(shmem_config.size())));
+      shmem_config.unlock();
+    } else {
+      qDebug() << "Unable to lock " << shmem_config.key();
+    }
+    //shmem_config.detach();
+  } else {
+    qDebug() << "Unable to attach " << shmem_config.key();
+  }
 #endif
 }
 
@@ -145,5 +196,24 @@ void ConsumerDialog::loadFromMemory() // consumer logic, active on default
   } else {
     ui.label->setPixmap(QPixmap::fromImage(image));
   }
+
+#ifdef SHARED_STRUCT
+  if (shmem_config.isAttached() || shmem_config.attach()) {
+    if (shmem_config.lock()) {
+      auto p = static_cast<const char*>(shmem_config.constData());
+      std::vector<char> v(p, p + shmem_config.size());
+      auto res = pystruct::unpack(PY_STRING(STRUCT_FORMAT), v);
+      shmem_config.unlock();
+      qDebug() << "Shared memory struct read: counter=" << std::get<0>(res) << ", stop_flag="
+               << std::get<1>(res) << ", file_name=" << std::string(std::get<2>(res)).c_str();
+    } else {
+      qDebug() << "unable to lock";
+    }
+    //shmem_config.detach();
+  } else {
+    qDebug() << "unable to attach";
+  }
+#endif // SHARED_STRUCT
+
 #endif
 }

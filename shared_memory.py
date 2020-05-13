@@ -57,13 +57,19 @@ CONSUMER = 0
 UNIQUE_SHARED_MEMORY_NAME = "MySharedMemoryDefault"
 SHARED_MEMORY_KEY_FILE = "shared_memory.key"
 
-from PyQt5.QtCore import QBuffer, QDataStream
+# See https://github.com/karkason/cppystruct and https://docs.python.org/2/library/struct.html
+SHARED_STRUCT = 1  # cppystruct/struct Python/C++ communication only enabled if 1 (0: disabled)
+STRUCT_FORMAT = "<I?30s"  # format of struct data, see https://docs.python.org/2/library/struct.html#format-characters
+
+from PyQt5.QtCore import QBuffer, QDataStream, QSharedMemory
 from PyQt5.QtGui import QImage, QPixmap
 from PyQt5.QtWidgets import QApplication, QDialog, QFileDialog
 from dialog import Ui_Dialog
 import logzero
 import sys
 import os.path
+if SHARED_STRUCT == 1:
+    import struct
 
 
 class ProducerDialog(QDialog):
@@ -92,6 +98,21 @@ class ProducerDialog(QDialog):
             from prodcon_ipc.consumer_ipc import ConsumerIPC
             self.consumer_ipc = ConsumerIPC(UNIQUE_SHARED_MEMORY_NAME, SHARED_MEMORY_KEY_FILE)
 
+        if SHARED_STRUCT == 1:
+            self.shmem_config = QSharedMemory('shared_struct_test')
+            if self.shmem_config.isAttached() or self.shmem_config.attach():
+                if self.shmem_config.lock():
+                    counter, stop_flag, file_name = struct.unpack(STRUCT_FORMAT, self.shmem_config.constData())
+                    logzero.logger.debug("Shared memory struct read: counter=" + str(counter) + ", stop_flag=" + str(stop_flag) + ", file_name=" + file_name)
+                    self.shmem_config.unlock()
+                else:
+                    logzero.logger.error("unable to lock " + self.shmem_config.key())
+                # Note: if both processes detach from the memory, it gets deleted so that attach() fails. That's why we
+                #       simply never detach (HERE). Depending on the app design, there may be a better solution.
+                #self.shmem_config.detach()
+            else:
+                logzero.logger.error("unable to attach " + self.shmem_config.key())
+
     def load_from_file(self):  # producer slot
         self.ui.label.setText("Select an image file")
         file_name, t = QFileDialog.getOpenFileName(self, None, None, "Images (*.png *.jpg)")
@@ -118,6 +139,25 @@ class ProducerDialog(QDialog):
                 sp.data()[:sp.size()] = buf.data().data()[:sp.size()]
         except Exception as err:
             self.ui.label.setText(str(err))
+
+        if SHARED_STRUCT == 1:
+            # Read from shared memory, increase value and write it back:
+            if self.shmem_config.isAttached() or self.shmem_config.attach():
+                if self.shmem_config.lock():
+                    counter, stop_flag, _ = struct.unpack(STRUCT_FORMAT, self.shmem_config.constData())
+                    data = struct.pack(STRUCT_FORMAT, counter + 1, stop_flag, str(os.path.basename(file_name)[:30]))
+                    size = min(struct.calcsize(STRUCT_FORMAT), self.shmem_config.size())
+
+                    self.shmem_config.data()[:size] = data[:size]
+                    self.shmem_config.unlock()
+                    if stop_flag:  # stop producing?
+                        logzero.logger.info("Consumer requested to stop the production.")
+                        sys.exit(0)
+                else:
+                    logzero.logger.error("unable to lock " + self.shmem_config.key())
+                #self.shmem_config.detach()
+            else:
+                logzero.logger.error("unable to attach " + self.shmem_config.key())
 
     def load_from_memory(self):  # consumer slot
         buf = QBuffer()

@@ -66,6 +66,15 @@
 // If that file exists, its first line is ALWAYS used as the shared memory's name:
 #define SHARED_MEMORY_KEY_FILE     "shared_memory.key"
 
+// Enable or disable sharing a format-specified struct between Python and C++, see
+//  - https://github.com/karkason/cppystruct
+//  - https://docs.python.org/2/library/struct.html
+// (Only works if this is the consumer.)
+#define SHARED_STRUCT
+// Format of data to be shared: datatype (type, size) and order, see
+// https://docs.python.org/2/library/struct.html#format-characters
+#define STRUCT_FORMAT "<I?30s"
+
 #include <QDialog>
 #include <QString>
 
@@ -83,6 +92,7 @@ class ConsumerDialog : public QDialog {
 
 public:
   ConsumerDialog(QWidget *parent = nullptr);
+  ~ConsumerDialog();
 
 public slots:
   void loadFromFile();
@@ -90,7 +100,11 @@ public slots:
 
 private:
   Ui::Dialog ui;
+
 #if CONSUMER == 1
+ #ifdef SHARED_STRUCT
+  QSharedMemory shmem_config;
+ #endif
   ConsumerIPC cipc;
 #else
   ProducerIPC pipc;
